@@ -1,3 +1,5 @@
+use std::ops::Mul;
+
 use super::{Amount, Balance, CurrencyId, CurrencyIdConvert, ParachainXcmRouter};
 use crate as orml_xtokens;
 
@@ -277,6 +279,7 @@ impl orml_xtokens::Config for Runtime {
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type BaseXcmWeight = BaseXcmWeight;
 	type LocationInverter = LocationInverter<Ancestry>;
+	type TeleportedAssets = ();
 }
 
 impl orml_xcm::Config for Runtime {

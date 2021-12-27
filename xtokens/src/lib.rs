@@ -31,13 +31,14 @@ use sp_runtime::{
 use sp_std::{prelude::*, result::Result};
 
 use xcm::prelude::*;
-use xcm_executor::traits::{InvertLocation, WeightBounds};
+use xcm_executor::traits::{InvertLocation, WeightBounds, FilterAssetLocation};
 
 pub use module::*;
 use orml_traits::{
 	location::{Parse, Reserve},
 	XcmTransfer,
 };
+
 
 mod mock;
 mod tests;
@@ -98,6 +99,8 @@ pub mod module {
 
 		/// Means of inverting a location.
 		type LocationInverter: InvertLocation;
+
+		type TeleportedAssets: FilterAssetLocation;
 	}
 
 	#[pallet::event]
@@ -435,6 +438,14 @@ pub mod module {
 			);
 
 			let (transfer_kind, dest, reserve, recipient) = Self::transfer_kind(&asset, &dest)?;
+			// We require that both assets have the same reserve or one is among the
+			// teleported assets of the other
+			ensure!(
+				fee.reserve() == Some(reserve.clone())
+					|| T::TeleportedAssets::filter_asset_location(&fee, &reserve),
+				Error::<T>::DistincAssetAndFeeId
+			);
+
 			let mut msg = match transfer_kind {
 				SelfReserveAsset => Self::transfer_self_reserve_asset_with_fee(
 					asset.clone(),

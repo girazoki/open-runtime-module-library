@@ -774,3 +774,48 @@ fn send_with_fee_should_handle_overflow() {
 		);
 	});
 }
+
+#[test]
+fn send_sibling_asset_to_reserve_sibling_with_distinct_fee() {
+	TestNet::reset();
+
+	ParaA::execute_with(|| {
+		assert_ok!(ParaTokens::deposit(CurrencyId::B, &ALICE, 1_000));
+	});
+
+	ParaB::execute_with(|| {
+		assert_ok!(ParaTokens::deposit(CurrencyId::B, &sibling_a_account(), 1_000));
+	});
+
+	ParaA::execute_with(|| {
+		assert_ok!(ParaXTokens::transfer_with_fee(
+			Some(ALICE).into(),
+			CurrencyId::B,
+			450,
+			CurrencyId::A,
+			50,
+			Box::new(
+				(
+					Parent,
+					Parachain(2),
+					Junction::AccountId32 {
+						network: NetworkId::Any,
+						id: BOB.into(),
+					},
+				)
+					.into()
+			),
+			40,
+		));
+
+		assert_eq!(ParaTokens::free_balance(CurrencyId::B, &ALICE), 500);
+		assert_eq!(ParaTokens::free_balance(CurrencyId::A, &ALICE), 950);
+	});
+
+	// It should use 40 for weight, so 460 should reach destination
+	ParaB::execute_with(|| {
+		assert_eq!(ParaTokens::free_balance(CurrencyId::B, &sibling_a_account()), 500);
+		assert_eq!(ParaTokens::free_balance(CurrencyId::B, &BOB), 500);
+		assert_eq!(ParaTokens::free_balance(CurrencyId::A, &BOB), 10);
+	});
+}
